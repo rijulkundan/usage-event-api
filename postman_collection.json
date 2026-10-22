@@ -1,0 +1,142 @@
+
+{
+  "info": {
+    "name": "Usage Event API",
+    "description": "Requests for customer authentication, usage event ingestion, event filtering, and charge preview.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "customer_id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/"
+      }
+    },
+    {
+      "name": "Register Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Customer\",\n  \"email\": \"customer@example.com\",\n  \"password\": \"StrongPassword123\"\n}"
+        },
+        "url": "{{base_url}}/register"
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "customer@example.com"
+            },
+            {
+              "key": "password",
+              "value": "StrongPassword123"
+            }
+          ]
+        },
+        "url": "{{base_url}}/login"
+      }
+    },
+    {
+      "name": "Submit Single Usage Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_id\": \"event-001\",\n  \"customer_id\": {{customer_id}},\n  \"event_type\": \"voice\",\n  \"quantity\": 10,\n  \"timestamp\": \"2026-10-22T10:00:00Z\"\n}"
+        },
+        "url": "{{base_url}}/events"
+      }
+    },
+    {
+      "name": "Submit Bulk Usage Events",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"event_id\": \"event-002\",\n    \"customer_id\": {{customer_id}},\n    \"event_type\": \"voice\",\n    \"quantity\": 10,\n    \"timestamp\": \"2026-10-22T10:00:00Z\"\n  },\n  {\n    \"event_id\": \"event-003\",\n    \"customer_id\": {{customer_id}},\n    \"event_type\": \"sms\",\n    \"quantity\": 2,\n    \"timestamp\": \"2026-10-22T10:05:00Z\"\n  }\n]"
+        },
+        "url": "{{base_url}}/events"
+      }
+    },
+    {
+      "name": "Get Usage Events",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/events?event_type=voice&from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z"
+      }
+    },
+    {
+      "name": "Charge Preview",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{base_url}}/customers/{{customer_id}}/charge-preview?from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z"
+      }
+    }
+  ]
+}
