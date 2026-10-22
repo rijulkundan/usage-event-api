@@ -1,94 +1,74 @@
-# Usage Event API with Charge Preview
+# Usage Event API
 
-A REST API built with Python, FastAPI, PostgreSQL, SQLAlchemy, and JWT authentication. It accepts usage events, prevents duplicate event storage, and calculates charge previews for voice, SMS, and data usage.
+This is a Python API project built using FastAPI and PostgreSQL. It is used to store customer usage events for voice, SMS, and data and calculate the charges for that usage.
 
-## Features
+I built this project as part of a backend assignment. It includes user authentication, event handling, charge preview, and basic tests.
 
-- Customer registration and login using JWT authentication.
-- Password hashing.
-- Usage event ingestion for single events and bulk lists.
-- Event validation using Pydantic.
-- Filtering events by type and timestamp range.
-- Charge previews grouped by voice, SMS, and data.
-- Idempotent event ingestion using unique event IDs and PostgreSQL conflict handling.
-- Database schema migrations using Alembic.
-- Docker Compose setup for the API and PostgreSQL.
-- Automated API tests using pytest.
-
-## Technology Stack
+## Technologies Used
 
 - Python
 - FastAPI
 - PostgreSQL
 - SQLAlchemy
-- Alembic
-- Pydantic
-- JWT
-- Docker Compose
-- Pytest
+- Alembic for database migrations
+- JWT for authentication
+- Docker and Docker Compose
+- Pytest for testing
 
-## Run the Project
+## Features
 
-### Prerequisites
+- Register a customer and log in using email and password.
+- Use a JWT token to access protected APIs.
+- Add a single usage event or multiple events in one request.
+- Get usage events by customer, event type, and date range.
+- Calculate voice, SMS, and data charges for a selected period.
+- Ignore duplicate events using a unique event ID.
+- Validate request data and return errors for invalid requests.
 
-Install Docker Desktop and ensure Docker is running.
+## How to Run the Project
 
-### Start the API and database
+Make sure Docker Desktop is installed and running.
+
+Clone the repository:
 
 ```bash
-docker compose up --build -d
+git clone https://github.com/rijulkundan/usage-event-api.git
+cd usage-event-api
+```
+
+Start the application:
+
+```bash
+docker compose up --build
 ```
 
 The API will be available at:
 
-- API: http://localhost:8000
-- Interactive Swagger documentation: http://localhost:8000/docs
+`http://localhost:8000`
 
-### Stop the services
+You can test the endpoints using Swagger:
 
-```bash
-docker compose down
-```
+`http://localhost:8000/docs`
 
-### View application logs
-
-```bash
-docker compose logs -f app
-```
+The database migrations run when the application starts.
 
 ## Authentication
 
-### Register a customer
+First, register a customer using `POST /register`.
 
-`POST /register`
+Then log in using `POST /login` to get an access token. Use this token to call the protected endpoints.
 
-Example request:
+The login endpoint accepts the email in the `username` field and the password in the form data.
 
-```json
-{
-  "name": "Test Customer",
-  "email": "customer@example.com",
-  "password": "StrongPassword123"
-}
-```
+## Adding Usage Events
 
-### Log in
+The `POST /events` endpoint accepts a single event or a list of events.
 
-`POST /login`
-
-Submit the email as the `username` form field and the password as the `password` form field. The API returns a JWT access token.
-
-Use the token as a Bearer token for protected endpoints. In Swagger, click **Authorize** and enter your login credentials.
-
-## Usage Events
-
-### Submit one event
-
-`POST /events`
+Example:
 
 ```json
 {
-  "event_id": "event-001",
+  "event_id": "event-101",
   "customer_id": 1,
   "event_type": "voice",
   "quantity": 10,
@@ -96,78 +76,66 @@ Use the token as a Bearer token for protected endpoints. In Swagger, click **Aut
 }
 ```
 
-### Submit multiple events
+The event type can be `voice`, `sms`, or `data`. The quantity must be greater than zero.
 
-`POST /events`
+You must be logged in, and you can only submit events for your own customer account.
 
-Send a JSON array containing usage events. Each event must have a unique event ID for it to be stored as a new event.
+## Getting Usage Events
 
-The response reports how many events were received, stored, and ignored as duplicates.
+Use `GET /events` to retrieve events. You can filter the results using the customer ID, event type, and date range.
 
-### Retrieve events
+For example:
 
-`GET /events`
+`GET /events?event_type=voice`
 
-Optional filters:
-
-- `customer_id`
-- `event_type` (`voice`, `sms`, or `data`)
-- `from`
-- `to`
-
-Customers can access only their own usage events.
+You can also use the `from` and `to` query parameters to filter events by date.
 
 ## Charge Preview
 
-`GET /customers/{customer_id}/charge-preview?from=...&to=...`
+Use the following endpoint to calculate charges for a customer over a selected period:
 
-Returns usage quantities and charges for voice, SMS, and data, along with the total charge for the selected time range.
+`GET /customers/{customer_id}/charge-preview?from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z`
 
-The default sample rate plan uses:
+The response contains the total quantity and charge for voice, SMS, and data, along with the overall charge.
 
-- Voice: 2.00 per unit
-- SMS: 3.00 per unit
-- Data: 1.00 per unit
+The default rate plan uses these rates:
 
-These are sample rates and can be changed in the rate plan configuration.
+| Usage type | Price per unit |
+|---|---:|
+| Voice | 2.00 |
+| SMS | 3.00 |
+| Data | 1.00 |
+
+These are sample rates for this project.
+
+## How Duplicate Events Are Handled
+
+Each event has a unique `event_id` in the database.
+
+When an event is submitted, the API uses PostgreSQL's `ON CONFLICT DO NOTHING` to skip an event if that ID already exists. This also helps prevent duplicate records when two requests try to insert the same event at the same time.
+
+The API returns how many events were received, how many were stored, and how many duplicates were ignored.
 
 ## Database Migrations
 
-Alembic manages database schema changes. Migrations are applied automatically when the Docker application starts.
+Alembic is used to manage changes to the database tables.
 
-To apply migrations manually from an appropriately configured environment:
+The migrations are stored in the `migrations/` folder and run automatically when the application starts through Docker Compose.
 
-```bash
-alembic upgrade head
-```
+## Running the Tests
 
-## Tests
-
-Run the automated tests in an environment with the required Python packages and a configured test database:
+Run the following commands in your local Python environment:
 
 ```bash
 python -m pytest tests/test_api.py -v
 ```
 
-The test suite covers authentication, registration and login, duplicate event handling, and charge preview calculation.
+The tests cover authentication, access without a valid token, duplicate event handling, and charge preview calculation.
 
-## How do you guarantee idempotency?
+## What Could Break at 10,000 Events per Second?
 
-Each usage event has a unique `event_id`, enforced by a unique constraint in PostgreSQL. Event ingestion uses PostgreSQL's `INSERT ... ON CONFLICT DO NOTHING`. If an event with the same ID has already been stored, a repeated request does not insert it again.
+At this rate, the API and PostgreSQL database could become bottlenecks. Too many simultaneous database writes and limited database connections could slow down requests.
 
-The uniqueness constraint is enforced by the database, so concurrent requests attempting to insert the same event cannot both create separate rows. The API reports duplicates as ignored events.
+I would first test the application under heavy load and check response times, database performance, and connection usage.
 
-## What would break at 10,000 events per second, and what would you change?
-
-At 10,000 events per second, the API's request processing, database connections, indexes, and PostgreSQL write capacity could become bottlenecks. Bulk requests and synchronous database writes may increase latency, while database contention and connection exhaustion could reduce throughput.
-
-I would load-test the system and measure API latency, database write latency, connection-pool usage, and error rates. I would then consider:
-
-1. Adding a durable message broker such as Kafka between ingestion and database processing.
-2. Scaling ingestion workers horizontally and using controlled batching.
-3. Optimizing indexes and database connection pooling.
-4. Partitioning the usage-event table by time or another suitable key when justified by query patterns.
-5. Adding monitoring, retry handling, dead-letter processing, and backpressure.
-6. Keeping event IDs unique and preserving idempotent processing across retries.
-
-These changes would need to be validated through load testing and operational monitoring before claiming the system can sustain 10,000 events per second.
+If more capacity is needed, I would add Kafka to buffer incoming events and process them using multiple workers. I would also look at batching database writes, improving indexes, and scaling the application horizontally. I would make sure retries do not create duplicate events and add monitoring to track failures and processing delays.
